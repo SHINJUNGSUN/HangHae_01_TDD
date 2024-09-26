@@ -1,6 +1,7 @@
 package io.hhplus.tdd.point.service;
 
 import io.hhplus.tdd.common.Constants;
+import io.hhplus.tdd.handler.PointConcurrentHandler;
 import io.hhplus.tdd.point.controller.PointController;
 import io.hhplus.tdd.point.PointHistory;
 import io.hhplus.tdd.point.TransactionType;
@@ -21,7 +22,10 @@ public class PointServiceImpl implements PointService {
     private static final Logger log = LoggerFactory.getLogger(PointController.class);
 
     private final UserPointRepository userPointRepository;
+
     private final PointHistoryRepository pointHistoryRepository;
+
+    private final PointConcurrentHandler pointConcurrentHandler;
 
     /**
      * 특정 유저의 포인트를 조회한다.
@@ -69,25 +73,25 @@ public class PointServiceImpl implements PointService {
          * [성공]
          */
 
-        if(amount <= 0) {
-            throw new IllegalArgumentException("충전할 포인트는 0보다 커야 합니다.");
-        }
+        return pointConcurrentHandler.executeConcurrentUserPoint(id, () -> {
+            if(amount <= 0) {
+                throw new IllegalArgumentException("충전할 포인트는 0보다 커야 합니다.");
+            }
 
-        UserPoint currentPoint = userPointRepository.selectById(id);
+            UserPoint currentPoint = userPointRepository.selectById(id);
 
-        if(currentPoint.point() + amount > Constants.MAX_POINT) {
-            throw new IllegalStateException("충전 후 포인트가 최대 잔고보다 큽니다.");
-        }
+            if(currentPoint.point() + amount > Constants.MAX_POINT) {
+                throw new IllegalStateException("충전 후 포인트가 최대 잔고보다 큽니다.");
+            }
 
-        UserPoint userPoint = userPointRepository.insertOrUpdate(id, currentPoint.point() + amount);
+            UserPoint userPoint = userPointRepository.insertOrUpdate(id, currentPoint.point() + amount);
 
-        try {
+            log.info("충전 포인트: {} / 잔액: {}", amount, userPoint.point());
+
             pointHistoryRepository.insert(id, amount, TransactionType.CHARGE, System.currentTimeMillis());
-        } catch (Exception e) {
-            log.error("Exception: {}", e.getMessage(), e);
-        }
 
-        return userPoint;
+            return userPoint;
+        });
     }
 
     /**
@@ -113,25 +117,28 @@ public class PointServiceImpl implements PointService {
          * 2. 사용 후 포인트가 0보다 작은 경우, 실패한다.
          * [성공]
          */
+        return pointConcurrentHandler.executeConcurrentUserPoint(id, () -> {
+            if (amount <= 0) {
+                throw new IllegalArgumentException("사용할 포인트는 0보다 커야 합니다.");
+            }
 
-        if(amount <= 0) {
-            throw new IllegalArgumentException("사용할 포인트는 0보다 커야 합니다.");
-        }
+            UserPoint currentPoint = userPointRepository.selectById(id);
 
-        UserPoint currentPoint = userPointRepository.selectById(id);
+            if (currentPoint.point() - amount < 0) {
+                throw new IllegalStateException("사용 후 포인트가 0보다 작습니다.");
+            }
 
-        if(currentPoint.point() - amount < 0) {
-            throw new IllegalStateException("사용 후 포인트가 0보다 작습니다.");
-        }
+            UserPoint userPoint = userPointRepository.insertOrUpdate(id, currentPoint.point() - amount);
 
-        UserPoint userPoint = userPointRepository.insertOrUpdate(id, currentPoint.point() - amount);
+            log.info("사용 포인트: {} / 잔액: {}", amount, userPoint.point());
 
-        try {
-            pointHistoryRepository.insert(id, amount, TransactionType.USE, System.currentTimeMillis());
-        } catch (Exception e) {
-            log.error("Exception: {}", e.getMessage(), e);
-        }
+            try {
+                pointHistoryRepository.insert(id, amount, TransactionType.USE, System.currentTimeMillis());
+            } catch (Exception e) {
+                log.error("Exception: {}", e.getMessage(), e);
+            }
 
-        return userPoint;
+            return userPoint;
+        });
     }
 }

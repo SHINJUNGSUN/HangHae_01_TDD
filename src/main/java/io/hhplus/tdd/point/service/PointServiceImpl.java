@@ -132,11 +132,7 @@ public class PointServiceImpl implements PointService {
 
             log.info("사용 포인트: {} / 잔액: {}", amount, userPoint.point());
 
-            try {
-                pointHistoryRepository.insert(id, amount, TransactionType.USE, System.currentTimeMillis());
-            } catch (Exception e) {
-                log.error("Exception: {}", e.getMessage(), e);
-            }
+            pointHistoryRepository.insert(id, amount, TransactionType.USE, System.currentTimeMillis());
 
             return userPoint;
         });

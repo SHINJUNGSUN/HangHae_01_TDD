@@ -16,6 +16,7 @@ import java.util.function.Supplier;
 public class PointConcurrentHandler {
 
     private static final Logger log = LoggerFactory.getLogger(PointConcurrentHandler.class);
+
     private final ConcurrentHashMap<Long, Lock> userLockMap = new ConcurrentHashMap<>();
 
     /**
@@ -26,38 +27,29 @@ public class PointConcurrentHandler {
      * @return
      */
     public UserPoint executeConcurrentUserPoint(long id, Supplier<UserPoint> function) {
+
         Lock lock = userLockMap.computeIfAbsent(id, key -> new ReentrantLock());
 
+        boolean acquired = false;
+
         try {
-            lock.lock();
+            acquired = lock.tryLock(Constants.LOCK_TIMEOUT, TimeUnit.MILLISECONDS);
+            if(!acquired) {
+                log.info("사용자 락 획득 타임아웃");
+                throw new IllegalArgumentException("사용자 락 획득 타임아웃");
+            }
 
             log.info("사용자 락 획득 성공, KEY : {}", id);
 
             return function.get();
-        } finally {
-            lock.unlock();
-            log.info("사용자 락 언락, KEY : {}", id);
-        }
 
-//        boolean acquired = false;
-//
-//        try {
-//            acquired = lock.tryLock(Constants.LOCK_TIMEOUT, TimeUnit.MICROSECONDS);
-//            if(!acquired) {
-//                throw new IllegalArgumentException("사용자 락 획득 타임아웃");
-//            }
-//
-//            log.info("사용자 락 획득 성공, KEY : {}", id);
-//
-//            return function.get();
-//
-//        } catch (InterruptedException e) {
-//            throw new IllegalArgumentException("사용자 락 획득 오류");
-//        } finally {
-//            if(acquired) {
-//                lock.unlock();
-//                log.info("사용자 락 언락, KEY : {}", id);
-//            }
-//        }
+        } catch (InterruptedException e) {
+            throw new IllegalArgumentException("사용자 락 획득 오류");
+        } finally {
+            if(acquired) {
+                lock.unlock();
+                log.info("사용자 락 언락, KEY : {}", id);
+            }
+        }
     }
 }

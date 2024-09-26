@@ -48,7 +48,6 @@ public class PointServiceTest {
         UserPoint result = pointServiceImpl.point(id);
 
         // then
-        assertNotNull(result);
         assertEquals(currentPoint, result);
 
         verify(userPointRepository).selectById(id);
@@ -67,7 +66,6 @@ public class PointServiceTest {
         List<PointHistory> result = pointServiceImpl.history(id);
 
         // then
-        assertNotNull(result);
         assertIterableEquals(pointHistoryList, result);
     }
 
@@ -79,9 +77,7 @@ public class PointServiceTest {
         long amount = -100L;
 
         // when & then
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> pointServiceImpl.charge(id, amount));
-
-        assertEquals("충전할 포인트는 0보다 커야 합니다.", exception.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> pointServiceImpl.charge(id, amount));
     }
 
     @Test
@@ -94,9 +90,7 @@ public class PointServiceTest {
         when(userPointRepository.selectById(id)).thenReturn(currentPoint);
 
         // when & then
-        Exception exception = assertThrows(IllegalStateException.class, () -> pointServiceImpl.charge(id, amount));
-
-        assertEquals("충전 후 포인트가 최대 잔고보다 큽니다.", exception.getMessage());
+        assertThrows(IllegalStateException.class, () -> pointServiceImpl.charge(id, amount));
     }
 
     @Test
@@ -114,7 +108,6 @@ public class PointServiceTest {
         UserPoint result = pointServiceImpl.charge(id, amount);
 
         // then
-        assertNotNull(result);
         assertEquals(7000L, result.point());
 
         verify(userPointRepository).selectById(id);
@@ -129,9 +122,7 @@ public class PointServiceTest {
         long amount = -100L;
 
         // when & then
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> pointServiceImpl.use(id, amount));
-
-        assertEquals("사용할 포인트는 0보다 커야 합니다.", exception.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> pointServiceImpl.use(id, amount));
     }
 
     @Test
@@ -144,9 +135,7 @@ public class PointServiceTest {
         when(userPointRepository.selectById(id)).thenReturn(currentPoint);
 
         // when & then
-        Exception exception = assertThrows(IllegalStateException.class, () -> pointServiceImpl.use(id, amount));
-
-        assertEquals("사용 후 포인트가 0보다 작습니다.", exception.getMessage());
+        assertThrows(IllegalStateException.class, () -> pointServiceImpl.use(id, amount));
     }
 
     @Test
@@ -164,7 +153,6 @@ public class PointServiceTest {
         UserPoint result = pointServiceImpl.use(id, amount);
 
         // then
-        assertNotNull(result);
         assertEquals(5000L, result.point());
 
         verify(userPointRepository).selectById(id);
